@@ -33,6 +33,25 @@ data "aws_subnet_ids" "ncfast" {
   }
 }
 
+/* 
+ ami for image repository
+*/
+data "aws_ami" "ec2-ami" {
+  most_recent = true
+  owners = ["self"]
+
+  filter {
+    name = "state"
+    values = ["available"]
+  }
+
+  filter {
+    name = "tag:Name"
+    values = var.ami_name_filter
+  }
+
+}
+
 /*
  get a list os security groups to assoicated with the ec2
  instance at launch
@@ -47,9 +66,9 @@ data "aws_security_group" "ncfast" {
 
 resource "aws_launch_template" "ePASS_Web_Server" {
   name_prefix   = "${var.name_prefix}-"
-  image_id      = var.image_id
+  image_id      = data.aws_ami.ec2-ami.id
   instance_type = var.instance_type
-  key_name = var.key_name
+  # key_name = var.key_name
   # user_data     = data.template_file.cloud_init.rendered
 
   network_interfaces {
@@ -83,8 +102,7 @@ resource "aws_autoscaling_group" "ePASS_Web_Server" {
   health_check_type = "ELB"
   vpc_zone_identifier = data.aws_subnet_ids.ncfast.ids
 
-  # target_group_arns = [ "arn:aws:elasticloadbalancing:us-east-1:533519224220:targetgroup/ncfast-websrvs-443/356cc58440bc07f4" ]
-  # target_group_arns = [ data.aws_alb_target_group.app_web_https.arn ]
+
   target_group_arns = [ aws_alb_target_group.ncfast.arn ]
 
   launch_template {
@@ -105,7 +123,7 @@ resource "aws_autoscaling_group" "ePASS_Web_Server" {
 // }
 
 resource "aws_alb" "ncfast" {
-   name = "dhhs-ncfast-poc-002-alb"
+   name = "dhhs-ncfast-poc-001-alb"
    security_groups = ["sg-02a18518d22463f35"]
 
    subnets = data.aws_subnet_ids.ncfast.ids 
